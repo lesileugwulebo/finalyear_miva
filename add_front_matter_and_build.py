@@ -139,7 +139,7 @@ def add_front_matter(doc):
 
     doc.add_page_break()
 
-    # Abstract Page (300 - 500 words as per Section 6.0)
+    # Abstract Page
     p_abs_h = doc.add_paragraph()
     p_abs_h.alignment = WD_ALIGN_PARAGRAPH.CENTER
     r_abs_h = p_abs_h.add_run("ABSTRACT\n")
@@ -219,7 +219,6 @@ def add_front_matter(doc):
     t_abb = doc.add_table(rows=len(abbreviations)+1, cols=2)
     t_abb.alignment = WD_TABLE_ALIGNMENT.CENTER
     
-    # Header
     cell_00 = t_abb.cell(0, 0)
     cell_01 = t_abb.cell(0, 1)
     set_cell_background(cell_00, "1F497D")
@@ -258,6 +257,24 @@ def add_front_matter(doc):
 
     doc.add_page_break()
 
+# Mapping of figure titles to generated PNG diagram images
+FIGURE_IMAGE_MAP = {
+    "figure 1.1": "fig1_1_conceptual_framework.png",
+    "figure 2.1": "fig2_1_regulatory_framework.png",
+    "figure 2.2": "fig2_2_intercloud_topology.png",
+    "figure 2.3": "fig2_3_zerotrust_planes.png",
+    "figure 2.4": "fig2_4_saml_federation.png",
+    "figure 2.5": "fig2_5_solution_quadrant.png",
+    "figure 3.1": "fig3_1_dsrm_cycle.png",
+    "figure 3.2": "fig3_2_five_plane_architecture.png",
+    "figure 5.1": "fig5_1_traffic_segmentation.png",
+    "figure 5.2": "fig5_2_prowler_findings.png",
+    "figure 5.3": "fig5_3_latency_chart.png",
+    "figure 5.4": "fig5_4_throughput_chart.png",
+    "figure 5.5": "fig5_5_failover_sequence.png",
+    "figure 6.1": "fig6_1_adoption_roadmap.png",
+}
+
 def build_docx():
     doc = Document()
 
@@ -279,8 +296,9 @@ def build_docx():
     normal_style.paragraph_format.line_spacing = 1.25
     normal_style.paragraph_format.space_after = Pt(6)
 
-    # Read markdown files
     scratch_dir = Path(r"C:\Users\Anna\.gemini\antigravity\scratch")
+    diagrams_dir = scratch_dir / "diagrams"
+    
     file1 = scratch_dir / "revised_chapter1_and_chapter2.md"
     file2 = scratch_dir / "revised_chapter3_to_chapter6.md"
 
@@ -294,6 +312,7 @@ def build_docx():
     i = 0
     in_code_block = False
     code_block_text = []
+    code_lang = ""
     in_table = False
     table_lines = []
 
@@ -303,21 +322,26 @@ def build_docx():
         # Code block handling
         if line.strip().startswith('```'):
             if in_code_block:
-                p = doc.add_paragraph()
-                p.paragraph_format.left_indent = Inches(0.4)
-                p.paragraph_format.right_indent = Inches(0.4)
-                p.paragraph_format.space_before = Pt(6)
-                p.paragraph_format.space_after = Pt(6)
-                
-                run = p.add_run("\n".join(code_block_text))
-                run.font.name = 'Consolas'
-                run.font.size = Pt(9.5)
-                run.font.color.rgb = RGBColor(0x1F, 0x29, 0x37)
+                # If code block was mermaid, skip outputting raw text since diagram PNG will be inserted by figure caption
+                if code_lang.lower() == 'mermaid':
+                    pass
+                else:
+                    p = doc.add_paragraph()
+                    p.paragraph_format.left_indent = Inches(0.4)
+                    p.paragraph_format.right_indent = Inches(0.4)
+                    p.paragraph_format.space_before = Pt(6)
+                    p.paragraph_format.space_after = Pt(6)
+                    
+                    run = p.add_run("\n".join(code_block_text))
+                    run.font.name = 'Consolas'
+                    run.font.size = Pt(9.5)
+                    run.font.color.rgb = RGBColor(0x1F, 0x29, 0x37)
 
                 code_block_text = []
                 in_code_block = False
             else:
                 in_code_block = True
+                code_lang = line.strip().lstrip('`').strip()
                 code_block_text = []
             i += 1
             continue
@@ -435,16 +459,34 @@ def build_docx():
             run = p.add_run("―" * 50)
             run.font.color.rgb = RGBColor(0xCC, 0xCC, 0xCC)
         elif line.strip():
+            # Check if line contains a Figure caption like "Figure 1.1: ..."
+            fig_match = re.search(r'\b(Figure\s+\d+\.\d+)', line, re.IGNORECASE)
+            if fig_match:
+                fig_key = fig_match.group(1).lower()
+                if fig_key in FIGURE_IMAGE_MAP:
+                    img_filename = FIGURE_IMAGE_MAP[fig_key]
+                    img_path = diagrams_dir / img_filename
+                    if img_path.exists():
+                        # Insert Diagram PNG Image
+                        p_img = doc.add_paragraph()
+                        p_img.alignment = WD_ALIGN_PARAGRAPH.CENTER
+                        p_img.paragraph_format.space_before = Pt(12)
+                        p_img.paragraph_format.space_after = Pt(4)
+                        p_img.paragraph_format.keep_with_next = True
+                        p_img.add_run().add_picture(str(img_path), width=Inches(6.0))
+
             p = doc.add_paragraph()
             p.paragraph_format.space_after = Pt(6)
             p.paragraph_format.line_spacing = 1.25
+            if fig_match:
+                p.alignment = WD_ALIGN_PARAGRAPH.CENTER
             add_formatted_runs(p, line.strip())
 
         i += 1
 
     output_path = scratch_dir / "final_year.docx"
     doc.save(str(output_path))
-    print(f"Successfully generated 100% MIVA Regulation Compliant Word Document: {output_path}")
+    print(f"Successfully generated Word Document with embedded high-res PNG diagrams: {output_path}")
 
 if __name__ == "__main__":
     build_docx()
