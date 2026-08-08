@@ -1,0 +1,21 @@
+project_name = "secure-multicloud"
+environment  = "lab"
+
+aws_region     = "eu-west-1"
+azure_location = "westeurope"
+
+azure_subscription_id = "00000000-0000-0000-0000-000000000000"
+azure_tenant_id       = "00000000-0000-0000-0000-000000000000"
+
+administrator_cidr = "197.210.0.1/32" # Replace with approved admin IP
+
+database_name     = "enterprise_lab"
+database_username = "app_user"
+
+# Secrets supplied at runtime via environment variables:
+# export TF_VAR_database_password="SuperSecurePassword123!"
+# export TF_VAR_vpn_shared_key_1="StrongPresharedKeyTunnel123!"
+# export TF_VAR_vpn_shared_key_2="StrongPresharedKeyTunnel456!"
+
+enable_guardduty = true
+enable_defender  = true
